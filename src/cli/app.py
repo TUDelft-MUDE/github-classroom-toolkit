@@ -4,39 +4,42 @@ from pathlib import Path
 
 from InquirerPy import prompt, inquirer
 
-from create_feedback_excel import create_feedback_excel_file
+from state import State
 from src.github_classroom.wrapper import GithubClassroom
-from src.github_classroom.state import State
+from src.utils.create_feedback_excel import create_feedback_excel_file
 
 
 def delayed_dump_get_classroom(ghc: GithubClassroom, state: State):
     json = ghc.get_classroom(state.get_classroom())
-    ghc.dump('dump_get_classroom', path=get_data_path(), json_data=json)
-
-
-def delayed_dump_list_assignments(ghc: GithubClassroom, state: State):
-    json = ghc.list_assignments(state.get_classroom())
-    ghc.dump('dump_list_assignments', path=get_data_path(), json_data=json),
+    path = get_data_path() / Path('classroom')
+    ghc.dump('dump_get_classroom', path=path, json_data=json)
 
 
 def delayed_dump_get_assignment(ghc: GithubClassroom, state: State):
     json = ghc.get_assignment(choose_assignment(ghc, state.get_classroom()))
-    ghc.dump('dump_get_assignment', path=get_data_path(), json_data=json),
+    path = get_data_path() / Path('assignment')
+    ghc.dump('dump_get_assignment', path=path, json_data=json),
+
+
+def delayed_dump_list_assignments(ghc: GithubClassroom, state: State):
+    json = ghc.list_assignments(state.get_classroom())
+    path = get_data_path() / Path('assignments')
+    ghc.dump('dump_list_assignments', path=path, json_data=json),
 
 
 def delayed_dump_list_accepted_assignments(ghc: GithubClassroom, state: State):
     assignment = choose_assignment(ghc, state.get_classroom())
     assignment_obj = ghc.get_assignment(assignment)
     assignment_name = assignment_obj['title']
-    print(f"assgnment obj: {assignment_obj}")
-    print(f'dump_{assignment_name}_accepted_assignments')
     json = ghc.list_accepted_assignments(assignment)
-    ghc.dump(f'dump_{assignment_name}_accepted_assignments', path=get_data_path(), json_data=json),
+    path = get_data_path() / Path('accepted_assignments')
+    ghc.dump(f'dump_{assignment_name}_accepted_assignments', path=path, json_data=json),
 
 
 def delayed_dump_list_grades(ghc: GithubClassroom, state: State):
     json = ghc.list_grades(choose_assignment(ghc, state.get_classroom()))
-    ghc.dump('dump_list_grades', path=get_data_path(), json_data=json),
+    path = get_data_path() / Path('grades')
+    ghc.dump('dump_list_grades', path=path, json_data=json),
 
 
 def delayed_create_feedback_excel(ghc: GithubClassroom, state: State):
@@ -47,7 +50,7 @@ def delayed_create_feedback_excel(ghc: GithubClassroom, state: State):
     columns = get_user_list('column name')
     create_feedback_excel_file(
         json_data=json,
-        assignment_name=assignment_name,
+        assignment_code=assignment_name,
         columns=columns,
         path=get_data_path(),
     )
@@ -78,8 +81,8 @@ def main_menu(ghc: GithubClassroom, state: State):
     # Create a mapping of menu choices to functions
     menu_functions = {
         "get_classroom": partial(delayed_dump_get_classroom, ghc, state),
-        "list_assignments": partial(delayed_dump_list_assignments, ghc, state),
         "get_assignment": partial(delayed_dump_get_assignment, ghc, state),
+        "list_assignments": partial(delayed_dump_list_assignments, ghc, state),
         "list_accepted_assignments": partial(delayed_dump_list_accepted_assignments, ghc, state),
         "list_grades": partial(delayed_dump_list_grades, ghc, state),
         "create_feedback_excel": partial(delayed_create_feedback_excel, ghc, state),
@@ -105,9 +108,10 @@ def main_menu(ghc: GithubClassroom, state: State):
         "choices": menu
     })
 
-    # Get the selected menu option and call the corresponding function
+    # Get the selected menu option
     selected_option = response["menu_option"]
-    menu_functions[selected_option]()  # Call the function
+    # and call the corresponding function
+    menu_functions[selected_option]()
 
 
 def choose_assignment(ghc: GithubClassroom, classroom_id: int):
@@ -130,7 +134,7 @@ def choose_assignment(ghc: GithubClassroom, classroom_id: int):
         "instruction": "(list may continue below, so check by arrow down)"
     })
 
-    # Get the selected menu option and call the corresponding function
+    # Get the selected menu option
     selected_option = response["menu_option"]
 
     if selected_option == "Exit":
@@ -158,7 +162,7 @@ def choose_class(ghc: GithubClassroom):
         "choices": menu
     })
 
-    # Get the selected menu option and call the corresponding function
+    # Get the selected menu option
     selected_option = response["menu_option"]
 
     if selected_option == "Exit":
@@ -167,10 +171,18 @@ def choose_class(ghc: GithubClassroom):
         return selected_option
 
 
-def authenticate():
+def authenticate() -> tuple[str, bool]:
+    """
+    Function for authentication into GitHub. First tries to find the token in a pre-defined place on the local machine.
+    If we cannot find the token or cannot authenticate successfully with the token,
+    we prompt the user for a (new) token. The expected location of the token
+    is given by the ``get_token_path()`` function.
+
+    :return: tuple (token, boolean), where the boolean stands for if we used a previously saved token or not
+    """
     if os.path.exists(get_token_path()):
         with open(get_token_path(), "r") as token_file:
-            read_token = token_file.read().strip()
+            read_token: str = token_file.read().strip()
             if GithubClassroom.is_valid(read_token):
                 return read_token, True
 
@@ -179,7 +191,6 @@ def authenticate():
         transformer=lambda _: "[hidden]",
         validate=lambda text: GithubClassroom.is_valid(text),
         invalid_message="Token is not valid",
-        # instruction="(abc)",
     ).execute()
     return user_input_token, False
 
@@ -189,26 +200,34 @@ def save_token(token: str) -> None:
         token_file.write(token)
 
 
-def get_token_path():
+def get_token_path() -> Path:
+    """
+    Returns Path to where we expect the user GitHub token to be, in a file named ``.github_token``.
+    We can choose to change this function if we want to change where we save the token.
+    """
     current_file_path = Path(__file__).resolve()
-    current_dir = current_file_path.parent
+    root_dir = current_file_path.parent.parent.parent
     token_file_path = Path('.github_token')
-    token_path = current_dir / token_file_path
+    token_path = root_dir / token_file_path
     return token_path
 
 
-def get_data_path():
+def get_data_path() -> Path:
+    """
+    Returns Path to where we expect the GitHub Classroom-specific data folder to be.
+    We can choose to change this if we want to change the data folder structure.
+    """
     current_file_path = Path(__file__).resolve()
-    current_dir = current_file_path.parent
-    token_file_path = Path('data')
-    token_path = current_dir / token_file_path
-    return token_path
+    root_dir = current_file_path.parent.parent.parent
+    data_sub_path = Path('data/raw_data/github_classroom')
+    data_path = root_dir / data_sub_path
+    return data_path
 
 
 if __name__ == "__main__":
     token, token_already_saved = authenticate()
     if not token_already_saved:
-        # todo ability to remove token
+        # todo: (Jasper) ability to remove token?
         wants_to_save_token = inquirer.confirm(message="Save token on local machine for later use?").execute()
         if wants_to_save_token:
             save_token(token)

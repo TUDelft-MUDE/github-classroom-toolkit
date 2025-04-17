@@ -9,7 +9,7 @@ class State:
         return self._selected_classroom is not None
 
     def get_classroom(self) -> int:
-        """ returns classroom id """
+        """ returns classroom id (int)"""
         if self._selected_classroom is None:
             raise ValueError("No classroom is currently selected")
         return self._selected_classroom
@@ -25,7 +25,7 @@ class State:
         return self._selected_assignment is not None
 
     def get_assignment(self) -> int:
-        """ returns assignment id """
+        """ returns assignment id (int) """
         if self._selected_assignment is None:
             raise ValueError("No assignment is currently selected")
         return self._selected_assignment
