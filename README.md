@@ -87,7 +87,9 @@ The accepted assignments endpoint also returns a list of JSON objects. For examp
     }
 ```
 
-Both seem to allow checking for
+Both seem to allow checking for passing of students; `[points_awarded]` being 0 or 10 for grades and `passing` being true.
+But, as of my (Jasper) january 2025 testing - the grades endpoint seem to be wrong in  a small amount of cases. 
+(TODO: Write a test for this?) This is why I use accepted assignments for the passing check.
 
 - general remarks (api errors out alot, accepted assignments > )
 #### start of the course workflow
