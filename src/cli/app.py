@@ -4,7 +4,7 @@ from pathlib import Path
 
 from InquirerPy import prompt, inquirer
 
-from state import State
+from src.cli.state import State
 from src.github_classroom.wrapper import GithubClassroom
 from src.utils.create_feedback_excel import create_feedback_excel_file
 
@@ -12,19 +12,22 @@ from src.utils.create_feedback_excel import create_feedback_excel_file
 def delayed_dump_get_classroom(ghc: GithubClassroom, state: State):
     json = ghc.get_classroom(state.get_classroom())
     path = get_data_path() / Path('classroom')
+    path.mkdir(parents=True, exist_ok=True)
     ghc.dump('dump_get_classroom', path=path, json_data=json)
 
 
 def delayed_dump_get_assignment(ghc: GithubClassroom, state: State):
     json = ghc.get_assignment(choose_assignment(ghc, state.get_classroom()))
     path = get_data_path() / Path('assignment')
-    ghc.dump('dump_get_assignment', path=path, json_data=json),
+    path.mkdir(parents=True, exist_ok=True)
+    ghc.dump('dump_get_assignment', path=path, json_data=json)
 
 
 def delayed_dump_list_assignments(ghc: GithubClassroom, state: State):
     json = ghc.list_assignments(state.get_classroom())
     path = get_data_path() / Path('assignments')
-    ghc.dump('dump_list_assignments', path=path, json_data=json),
+    path.mkdir(parents=True, exist_ok=True)
+    ghc.dump('dump_list_assignments', path=path, json_data=json)
 
 
 def delayed_dump_list_accepted_assignments(ghc: GithubClassroom, state: State):
@@ -33,13 +36,15 @@ def delayed_dump_list_accepted_assignments(ghc: GithubClassroom, state: State):
     assignment_name = assignment_obj['title']
     json = ghc.list_accepted_assignments(assignment)
     path = get_data_path() / Path('accepted_assignments')
-    ghc.dump(f'dump_{assignment_name}_accepted_assignments', path=path, json_data=json),
+    path.mkdir(parents=True, exist_ok=True)
+    ghc.dump(f'dump_{assignment_name}_accepted_assignments', path=path, json_data=json)
 
 
 def delayed_dump_list_grades(ghc: GithubClassroom, state: State):
     json = ghc.list_grades(choose_assignment(ghc, state.get_classroom()))
     path = get_data_path() / Path('grades')
-    ghc.dump('dump_list_grades', path=path, json_data=json),
+    path.mkdir(parents=True, exist_ok=True)
+    ghc.dump('dump_list_grades', path=path, json_data=json)
 
 
 def delayed_create_feedback_excel(ghc: GithubClassroom, state: State):
